@@ -8,14 +8,9 @@ use cw_storage_plus::{Item, Map};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
-	pub project_id: Uint128,
     pub token_addr: Addr,
-	pub token_name: String,
-    pub token_decimal: Uint128,
 	pub start_time: Uint128,
-	pub is_started: bool,
 }
-
 
 //------------Vesting parameter---------------------------------------
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, Copy)]

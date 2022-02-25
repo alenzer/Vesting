@@ -1,20 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Addr, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-    Uint128, CosmosMsg, BankMsg, QueryRequest, BankQuery, WasmMsg,
-    Coin, AllBalanceResponse, BlockInfo, Storage
+    to_binary, Binary, Deps, Env, StdResult,
+    Uint128, QueryRequest, BankQuery,
+    Coin, AllBalanceResponse,
 };
-use cw2::set_contract_version;
-use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse, TokenInfoResponse};
 
-use crate::msg::{ExecuteMsg, QueryMsg, InstantiateMsg};
+use cw20::{ Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse, TokenInfoResponse };
+
+use crate::msg::{QueryMsg};
 use crate::state::{Config, PROJECT_INFOS, ProjectInfo};
 use crate::contract::{ calc_pending };
 
-// version info for migration info
-const CONTRACT_NAME: &str = "Vesting";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -35,7 +32,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_pendingtokens(deps:Deps, _env:Env, project_id:u32, wallet: String) 
     -> StdResult<Uint128> 
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let x = PROJECT_INFOS.load(deps.storage, project_id)?;
     let mut index = x.seed_users.iter().position(|x| x.wallet_address == wallet);
     let mut amount = Uint128::zero();
     if index != None {
@@ -80,12 +77,16 @@ fn query_balance(deps:Deps, _env:Env, project_id:u32, wallet:String) -> StdResul
     let x = PROJECT_INFOS.load(deps.storage, project_id)?;
 
     let token_balance: Cw20BalanceResponse = deps.querier.query_wasm_smart(
-        x.config.token_addr,
+        x.clone().config.token_addr,
         &Cw20QueryMsg::Balance{
             address: wallet,
         }
     )?;
-    balance.amount.push(Coin::new(token_balance.balance.u128(), x.config.token_name));
+    let token_info: TokenInfoResponse = deps.querier.query_wasm_smart(
+        x.config.token_addr.clone(),
+        &Cw20QueryMsg::TokenInfo{}
+    )?;
+    balance.amount.push(Coin::new(token_balance.balance.u128(), token_info.name));
 
     Ok(balance)
 }

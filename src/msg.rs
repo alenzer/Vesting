@@ -11,11 +11,16 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    AddProject {
+        admin:String, 
+        token_addr:String, 
+        start_time: Uint128 
+    },
     SetConfig { 
         project_id: u32,
         admin:String, 
         token_addr:String, 
-        start_block: Uint128 
+        start_time: Uint128 
     },
     SetVestingParameters{
         project_id: u32,
