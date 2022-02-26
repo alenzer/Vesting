@@ -27,7 +27,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    PROJECT_SEQ.save(deps.storage, &(0))?;
+    PROJECT_SEQ.save(deps.storage, &(Uint128::zero()))?;
 
     let owner = msg
         .admin
@@ -49,6 +49,9 @@ pub fn execute(
     match msg {
         ExecuteMsg::AddProject{ admin, token_addr, start_time }
             => try_addproject(deps, info, admin, token_addr, start_time ),
+
+        ExecuteMsg::SetProjectInfo{ project_id, project_info }
+            => try_setprojectinfo(deps, info, project_id, project_info ),
 
         ExecuteMsg::SetConfig{ project_id, admin, token_addr , start_time} 
             => try_setconfig(deps, info, project_id, admin, token_addr, start_time),
@@ -78,10 +81,22 @@ pub fn execute(
             =>  try_claimpendingtokens(deps, _env, info, project_id )
     }
 }
-pub fn try_setvestingparameters(deps: DepsMut, info: MessageInfo, project_id: u32, params: Vec<VestingParameter>)
+pub fn try_setprojectinfo(deps: DepsMut, info: MessageInfo, project_id: Uint128, project_info: ProjectInfo)
     ->Result<Response, ContractError>
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
+    if x.config.owner != info.sender {
+        return Err(ContractError::Unauthorized{ });
+    }
+    x = project_info;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
+    Ok(Response::new()
+    .add_attribute("action", "set Project Info"))    
+}
+pub fn try_setvestingparameters(deps: DepsMut, info: MessageInfo, project_id: Uint128, params: Vec<VestingParameter>)
+    ->Result<Response, ContractError>
+{
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     if x.config.owner != info.sender {
         return Err(ContractError::Unauthorized{ });
     }
@@ -90,15 +105,15 @@ pub fn try_setvestingparameters(deps: DepsMut, info: MessageInfo, project_id: u3
     x.vest_param.insert("presale".to_string(), params[1]);
     x.vest_param.insert("ido".to_string(), params[2]);
 
-    PROJECT_INFOS.save(deps.storage, project_id, &x)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
     Ok(Response::new()
     .add_attribute("action", "Set Vesting parameters"))
 }
 
-pub fn calc_pending(store: &dyn Storage, _env: Env, project_id: u32, user: UserInfo, stage: String)
+pub fn calc_pending(store: &dyn Storage, _env: Env, project_id: Uint128, user: UserInfo, stage: String)
     -> Uint128
 {
-    let x = PROJECT_INFOS.load(store, project_id).unwrap();
+    let x = PROJECT_INFOS.load(store, project_id.u128().into()).unwrap();
     let param = x.vest_param.get(&stage).unwrap();
 
     let past_time =Uint128::new(_env.block.time.seconds() as u128) - x.config.start_time;
@@ -118,10 +133,10 @@ pub fn calc_pending(store: &dyn Storage, _env: Env, project_id: u32, user: UserI
     return unlocked - user.released_amount;
 }
 
-pub fn try_claimpendingtokens(deps: DepsMut, _env: Env, info: MessageInfo, project_id:u32 )
+pub fn try_claimpendingtokens(deps: DepsMut, _env: Env, info: MessageInfo, project_id: Uint128 )
     ->Result<Response, ContractError>
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     let mut index = x.seed_users.iter().position(|x| x.wallet_address == info.sender);
     let mut amount = Uint128::zero();
     if index != None {
@@ -198,96 +213,96 @@ pub fn check_add_userinfo( users: &mut Vec<UserInfo>, wallet:Addr, amount: Uint1
         users[index.unwrap()].total_amount += amount;
     }
 }
-pub fn try_addseeduser(deps: DepsMut, info: MessageInfo, project_id:u32, wallet:Addr, amount: Uint128)
+pub fn try_addseeduser(deps: DepsMut, info: MessageInfo, project_id: Uint128, wallet:Addr, amount: Uint128)
     ->Result<Response, ContractError>
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     if x.config.owner != info.sender {
         return Err(ContractError::Unauthorized{ });
     }
 
     check_add_userinfo(&mut x.seed_users, wallet, amount);
-    PROJECT_INFOS.save(deps.storage, project_id, &x)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
 
     Ok(Response::new()
     .add_attribute("action", "Add  User info for Seed stage"))
 }
-pub fn try_addpresaleuser(deps: DepsMut, info: MessageInfo, project_id:u32, wallet: Addr, amount:Uint128)
+pub fn try_addpresaleuser(deps: DepsMut, info: MessageInfo, project_id: Uint128, wallet: Addr, amount:Uint128)
     ->Result<Response, ContractError>
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     if x.config.owner != info.sender {
         return Err(ContractError::Unauthorized{ });
     }
 
     check_add_userinfo(&mut x.presale_users, wallet, amount);
-    PROJECT_INFOS.save(deps.storage, project_id, &x)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
 
     Ok(Response::new()
     .add_attribute("action", "Add  User info for Presale stage"))
 }
-pub fn try_addidouser(deps: DepsMut, info: MessageInfo, project_id:u32, wallet:Addr, amount:Uint128)
+pub fn try_addidouser(deps: DepsMut, info: MessageInfo, project_id: Uint128, wallet:Addr, amount:Uint128)
     ->Result<Response, ContractError>
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     if x.config.owner != info.sender {
         return Err(ContractError::Unauthorized{ });
     }
 
     check_add_userinfo(&mut x.ido_users, wallet, amount);
-    PROJECT_INFOS.save(deps.storage, project_id, &x)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
 
     Ok(Response::new()
     .add_attribute("action", "Add  User info for IDO stage"))
 }
-pub fn try_setseedusers(deps: DepsMut, info: MessageInfo, project_id:u32, user_infos: Vec<UserInfo>)
+pub fn try_setseedusers(deps: DepsMut, info: MessageInfo, project_id: Uint128, user_infos: Vec<UserInfo>)
     ->Result<Response, ContractError>
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     if x.config.owner != info.sender {
         return Err(ContractError::Unauthorized{ });
     }
 
     x.seed_users = user_infos;
 
-    PROJECT_INFOS.save(deps.storage, project_id, &x)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
 
     Ok(Response::new()
     .add_attribute("action", "Set User infos for Seed stage"))
 }
-pub fn try_setpresaleusers(deps: DepsMut, info: MessageInfo, project_id:u32, user_infos: Vec<UserInfo>)
+pub fn try_setpresaleusers(deps: DepsMut, info: MessageInfo, project_id: Uint128, user_infos: Vec<UserInfo>)
     ->Result<Response, ContractError>
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     if x.config.owner != info.sender {
         return Err(ContractError::Unauthorized{ });
     }
 
     x.presale_users = user_infos;
 
-    PROJECT_INFOS.save(deps.storage, project_id, &x)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
 
     Ok(Response::new()
     .add_attribute("action", "Set User infos for Presale stage"))
 }
-pub fn try_setidousers(deps: DepsMut, info: MessageInfo, project_id:u32, user_infos: Vec<UserInfo>)
+pub fn try_setidousers(deps: DepsMut, info: MessageInfo, project_id: Uint128, user_infos: Vec<UserInfo>)
     ->Result<Response, ContractError>
 {
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     if x.config.owner != info.sender {
         return Err(ContractError::Unauthorized{ });
     }
 
     x.ido_users = user_infos;
 
-    PROJECT_INFOS.save(deps.storage, project_id, &x)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
 
     Ok(Response::new()
     .add_attribute("action", "Set User infos for IDO stage"))
 }
 
 pub fn try_setconfig(deps:DepsMut, info:MessageInfo,
-    project_id: u32,
+    project_id: Uint128,
     admin: String, 
     token_addr: String,
     start_time: Uint128
@@ -299,12 +314,12 @@ pub fn try_setconfig(deps:DepsMut, info:MessageInfo,
         return Err(ContractError::Unauthorized{});
     }
 
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     x.config.owner = deps.api.addr_validate(admin.as_str())?;
     x.config.token_addr = deps.api.addr_validate(token_addr.as_str())?;
     x.config.start_time = start_time;
 
-    PROJECT_INFOS.save(deps.storage, project_id, &x)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
     Ok(Response::new()
         .add_attribute("action", "SetConfig"))                                
 }
@@ -328,7 +343,7 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
     };
 
     let mut project_info: ProjectInfo = ProjectInfo{
-        project_id: 0,
+        project_id: Uint128::zero(),
         config: config,
         vest_param: HashMap::new(),
         seed_users: Vec::new(),

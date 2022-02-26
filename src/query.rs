@@ -27,12 +27,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
         QueryMsg::GetPendingTokens{ project_id, wallet } => 
             to_binary(&query_pendingtokens(deps, _env, project_id, wallet)?),
+
+        QueryMsg::GetAllProjectInfo{ } =>
+            to_binary(&query_getallprojectinfo(deps)?),
+
     }
 }
-fn query_pendingtokens(deps:Deps, _env:Env, project_id:u32, wallet: String) 
+fn query_pendingtokens(deps:Deps, _env:Env, project_id: Uint128, wallet: String) 
     -> StdResult<Uint128> 
 {
-    let x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     let mut index = x.seed_users.iter().position(|x| x.wallet_address == wallet);
     let mut amount = Uint128::zero();
     if index != None {
@@ -60,12 +64,12 @@ fn query_pendingtokens(deps:Deps, _env:Env, project_id:u32, wallet: String)
 
     Ok(amount)
 }
-fn query_getprojectinfo(deps:Deps, project_id:u32) -> StdResult<ProjectInfo>{
-    let x = PROJECT_INFOS.load(deps.storage, project_id)?;
+fn query_getprojectinfo(deps:Deps, project_id: Uint128) -> StdResult<ProjectInfo>{
+    let x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     Ok(x)
 }
 
-fn query_balance(deps:Deps, _env:Env, project_id:u32, wallet:String) -> StdResult<AllBalanceResponse>{
+fn query_balance(deps:Deps, _env:Env, project_id: Uint128, wallet:String) -> StdResult<AllBalanceResponse>{
 
     // let uusd_denom = String::from("uusd");
     let mut balance: AllBalanceResponse = deps.querier.query(
@@ -74,7 +78,7 @@ fn query_balance(deps:Deps, _env:Env, project_id:u32, wallet:String) -> StdResul
         }
     ))?;
 
-    let x = PROJECT_INFOS.load(deps.storage, project_id)?;
+    let x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
 
     let token_balance: Cw20BalanceResponse = deps.querier.query_wasm_smart(
         x.clone().config.token_addr,
@@ -90,7 +94,19 @@ fn query_balance(deps:Deps, _env:Env, project_id:u32, wallet:String) -> StdResul
 
     Ok(balance)
 }
-fn query_getconfig(deps:Deps, project_id:u32) -> StdResult<Config> {
-    let x = PROJECT_INFOS.load(deps.storage, project_id)?;
+fn query_getconfig(deps:Deps, project_id: Uint128) -> StdResult<Config> {
+    let x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     Ok(x.config)
+}
+fn query_getallprojectinfo(deps: Deps) -> StdResult<Vec<ProjectInfo>>
+{
+    let all: StdResult<Vec<_>> = PROJECT_INFOS.range(deps.storage, None, None, 
+        cosmwasm_std::Order::Ascending).collect();
+    let all = all.unwrap();
+
+    let mut all_project:Vec<ProjectInfo> = Vec::new();
+    for x in all{
+        all_project.push(x.1);
+    }
+    Ok(all_project)
 }

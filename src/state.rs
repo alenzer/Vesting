@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use cosmwasm_std::{Addr, Uint128, Coin, StdResult, DepsMut};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::{Item, Map, U128Key};
 
 //------------Config---------------------------------------
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -37,7 +37,7 @@ pub struct UserInfo{
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ProjectInfo{
-	pub project_id: u32,
+	pub project_id: Uint128,
 	pub config: Config,
 	pub vest_param: HashMap<String, VestingParameter>,
 	pub seed_users: Vec<UserInfo>,
@@ -47,17 +47,17 @@ pub struct ProjectInfo{
 
 pub const OWNER: Item<Addr> = Item::new("owner");
 
-pub const PROJECT_SEQ: Item<u32> = Item::new("prj_seq");
-pub const PROJECT_INFOS:Map<u32, ProjectInfo> = Map::new("project_infos");
+pub const PROJECT_SEQ: Item<Uint128> = Item::new("prj_seq");
+pub const PROJECT_INFOS:Map<U128Key, ProjectInfo> = Map::new("project_infos");
 
 pub fn save_projectinfo(deps: DepsMut, _prj: &mut ProjectInfo) 
     -> StdResult<()> 
 {
     // increment id if exists, or return 1
     let id = PROJECT_SEQ.load(deps.storage)?;
-    let id = id + 1;
+    let id = id.checked_add(Uint128::new(1))?;
     PROJECT_SEQ.save(deps.storage, &id)?;
 
     _prj.project_id = id;
-    PROJECT_INFOS.save(deps.storage, id, &_prj)
+    PROJECT_INFOS.save(deps.storage, id.u128().into(), &_prj)
 }
