@@ -9,30 +9,6 @@
       ],
       "properties": {
         "get_config": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "get_all_project"
-      ],
-      "properties": {
-        "get_all_project": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "get_project"
-      ],
-      "properties": {
-        "get_project": {
           "type": "object",
           "required": [
             "project_id"
@@ -49,17 +25,21 @@
     {
       "type": "object",
       "required": [
-        "get_backer"
+        "get_pending_tokens"
       ],
       "properties": {
-        "get_backer": {
+        "get_pending_tokens": {
           "type": "object",
           "required": [
-            "project_id"
+            "project_id",
+            "wallet"
           ],
           "properties": {
             "project_id": {
               "$ref": "#/definitions/Uint128"
+            },
+            "wallet": {
+              "type": "string"
             }
           }
         }
@@ -75,9 +55,13 @@
         "get_balance": {
           "type": "object",
           "required": [
+            "project_id",
             "wallet"
           ],
           "properties": {
+            "project_id": {
+              "$ref": "#/definitions/Uint128"
+            },
             "wallet": {
               "type": "string"
             }
@@ -89,10 +73,30 @@
     {
       "type": "object",
       "required": [
-        "get_communitymembers"
+        "get_project_info"
       ],
       "properties": {
-        "get_communitymembers": {
+        "get_project_info": {
+          "type": "object",
+          "required": [
+            "project_id"
+          ],
+          "properties": {
+            "project_id": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_all_project_info"
+      ],
+      "properties": {
+        "get_all_project_info": {
           "type": "object"
         }
       },
