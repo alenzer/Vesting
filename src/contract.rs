@@ -47,14 +47,17 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::SetConfig{ admin }
+            => try_setconfig(deps, info, admin),
+
         ExecuteMsg::AddProject{ admin, token_addr, start_time }
             => try_addproject(deps, info, admin, token_addr, start_time ),
 
         ExecuteMsg::SetProjectInfo{ project_id, project_info }
             => try_setprojectinfo(deps, info, project_id, project_info ),
 
-        ExecuteMsg::SetConfig{ project_id, admin, token_addr , start_time} 
-            => try_setconfig(deps, info, project_id, admin, token_addr, start_time),
+        ExecuteMsg::SetProjectConfig{ project_id, admin, token_addr , start_time} 
+            => try_setprojectconfig(deps, info, project_id, admin, token_addr, start_time),
 
         ExecuteMsg::SetVestingParameters{ project_id, params }
             => try_setvestingparameters(deps, info, project_id, params),
@@ -301,7 +304,7 @@ pub fn try_setidousers(deps: DepsMut, info: MessageInfo, project_id: Uint128, us
     .add_attribute("action", "Set User infos for IDO stage"))
 }
 
-pub fn try_setconfig(deps:DepsMut, info:MessageInfo,
+pub fn try_setprojectconfig(deps:DepsMut, info:MessageInfo,
     project_id: Uint128,
     admin: String, 
     token_addr: String,
@@ -372,6 +375,21 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
     };
 
     try_setvestingparameters(deps.branch(), info, project_info.project_id, vec![seed_param, presale_param, ido_param])?;
+
+    Ok(Response::new()
+        .add_attribute("action", "SetConfig"))                                
+}
+pub fn try_setconfig(deps:DepsMut, info:MessageInfo, admin: String) 
+    -> Result<Response, ContractError>
+{
+    //-----------check owner--------------------------
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner {
+        return Err(ContractError::Unauthorized{});
+    }
+
+    let admin_addr = deps.api.addr_validate(&admin).unwrap();
+    OWNER.save(deps.storage, &admin_addr)?;
 
     Ok(Response::new()
         .add_attribute("action", "SetConfig"))                                

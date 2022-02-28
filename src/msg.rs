@@ -11,6 +11,9 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    SetConfig {
+        admin: String,
+    },
     AddProject {
         admin:String, 
         token_addr:String, 
@@ -20,7 +23,7 @@ pub enum ExecuteMsg {
         project_id: Uint128,
         project_info: ProjectInfo
     },
-    SetConfig { 
+    SetProjectConfig { 
         project_id: Uint128,
         admin:String, 
         token_addr:String, 
