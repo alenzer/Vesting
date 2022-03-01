@@ -32,12 +32,16 @@
           "type": "object",
           "required": [
             "admin",
+            "project_id",
             "start_time",
             "token_addr"
           ],
           "properties": {
             "admin": {
               "type": "string"
+            },
+            "project_id": {
+              "$ref": "#/definitions/Uint128"
             },
             "start_time": {
               "$ref": "#/definitions/Uint128"
@@ -339,7 +343,7 @@
           "$ref": "#/definitions/Uint128"
         },
         "token_addr": {
-          "$ref": "#/definitions/Addr"
+          "type": "string"
         }
       }
     },
@@ -379,8 +383,8 @@
           }
         },
         "vest_param": {
-          "type": "object",
-          "additionalProperties": {
+          "type": "array",
+          "items": {
             "$ref": "#/definitions/VestingParameter"
           }
         }
