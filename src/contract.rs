@@ -1,6 +1,5 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use std::collections::HashMap;
 
 use cosmwasm_std::{
     Addr, to_binary, DepsMut, Env, MessageInfo, Response,
@@ -10,9 +9,8 @@ use cw2::set_contract_version;
 use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse, TokenInfoResponse};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::state::{ProjectInfo, UserInfo, VestingParameter, PROJECT_SEQ, PROJECT_INFOS, OWNER, Config,
-    };
+use crate::msg::{ExecuteMsg, InstantiateMsg, ProjectInfo, UserInfo, VestingParameter, Config};
+use crate::state::{PROJECT_INFOS, OWNER};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "Vesting";
@@ -26,8 +24,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    PROJECT_SEQ.save(deps.storage, &(Uint128::zero()))?;
 
     let owner = msg
         .admin
@@ -104,9 +100,7 @@ pub fn try_setvestingparameters(deps: DepsMut, info: MessageInfo, project_id: Ui
         return Err(ContractError::Unauthorized{ });
     }
 
-    x.vest_param.insert("seed".to_string(), params[0]);
-    x.vest_param.insert("presale".to_string(), params[1]);
-    x.vest_param.insert("ido".to_string(), params[2]);
+    x.vest_param = params;
 
     PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
     Ok(Response::new()
@@ -117,7 +111,18 @@ pub fn calc_pending(store: &dyn Storage, _env: Env, project_id: Uint128, user: U
     -> Uint128
 {
     let x = PROJECT_INFOS.load(store, project_id.u128().into()).unwrap();
-    let param = x.vest_param.get(&stage).unwrap();
+    let index;
+    if stage.to_lowercase() == "seed".to_string(){
+        index = 0;
+    }
+    else if stage.to_lowercase() == "presale".to_string(){
+        index = 1;
+    }
+    else {
+        index = 2;
+    }
+
+    let param = x.vest_param[index];
 
     let past_time =Uint128::new(_env.block.time.seconds() as u128) - x.config.start_time;
 
@@ -319,7 +324,7 @@ pub fn try_setprojectconfig(deps:DepsMut, info:MessageInfo,
 
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     x.config.owner = deps.api.addr_validate(admin.as_str())?;
-    x.config.token_addr = deps.api.addr_validate(token_addr.as_str())?;
+    x.config.token_addr = token_addr;
     x.config.start_time = start_time;
 
     PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
@@ -342,20 +347,9 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
 
     let config: Config = Config{
         owner: deps.api.addr_validate(admin.as_str())?,
-        token_addr : deps.api.addr_validate(token_addr.as_str())?,
+        token_addr : token_addr,
         start_time : start_time,
     };
-
-    let project_info: ProjectInfo = ProjectInfo{
-        project_id: Uint128::zero(),
-        config: config,
-        vest_param: HashMap::new(),
-        seed_users: Vec::new(),
-        presale_users: Vec::new(),
-        ido_users: Vec::new()
-    };
-
-    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &project_info)?;
 
     let sec_per_month = 60 * 60 * 24 * 30;
     let seed_param = VestingParameter {
@@ -374,10 +368,19 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
         period: Uint128::new(sec_per_month * 4) //release over 4 month
     };
 
-    try_setvestingparameters(deps, info, project_info.project_id, vec![seed_param, presale_param, ido_param])?;
+    let project_info: ProjectInfo = ProjectInfo{
+        project_id: Uint128::zero(),
+        config: config,
+        vest_param: vec![seed_param, presale_param, ido_param],
+        seed_users: Vec::new(),
+        presale_users: Vec::new(),
+        ido_users: Vec::new()
+    };
+
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &project_info)?;
 
     Ok(Response::new()
-        .add_attribute("action", "SetConfig"))                                
+        .add_attribute("action", "add project"))                                
 }
 pub fn try_setconfig(deps:DepsMut, info:MessageInfo, admin: String) 
     -> Result<Response, ContractError>

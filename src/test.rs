@@ -5,8 +5,7 @@ use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR, mock_depend
 
 use crate::contract::{execute, instantiate};
 use crate::query::{query};
-use crate::state::{VestingParameter, Config, UserInfo, ProjectInfo};
-use crate::msg::{QueryMsg, ExecuteMsg, InstantiateMsg};
+use crate::msg::{QueryMsg, ExecuteMsg, InstantiateMsg, VestingParameter, Config, UserInfo, ProjectInfo};
 
 // use crate::mock_querier::mock_dependencies;
 use cw20::Cw20ExecuteMsg;
@@ -15,7 +14,7 @@ use cw20::Cw20ExecuteMsg;
 
 #[test]
 fn workflow(){
-    let mut deps = mock_dependencies();
+    let mut deps = mock_dependencies(&[]);
     
     let msg = InstantiateMsg{
         admin: Some(String::from("admin")),
@@ -26,6 +25,7 @@ fn workflow(){
 //add community member
 
     let msg = ExecuteMsg::AddProject{
+        project_id: Uint128::from(1u64),
         admin: String::from("admin"),
         token_addr: String::from("WeFund"),
         start_time: Uint128::from(1645771274u128)
@@ -48,7 +48,7 @@ fn workflow(){
     // let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
 //-Get Project-----------------
-    let msg = QueryMsg::GetProjectInfo{project_id: 1};
+    let msg = QueryMsg::GetProjectInfo{project_id: Uint128::from(1u64)};
     let project_info = query(deps.as_ref(), mock_env(), msg).unwrap();
 
     let res:ProjectInfo = from_binary(&project_info).unwrap();

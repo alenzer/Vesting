@@ -8,8 +8,8 @@ use cosmwasm_std::{
 
 use cw20::{ Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse, TokenInfoResponse };
 
-use crate::msg::{QueryMsg};
-use crate::state::{Config, PROJECT_INFOS, ProjectInfo, OWNER};
+use crate::msg::{QueryMsg, Config, ProjectInfo};
+use crate::state::{PROJECT_INFOS, OWNER};
 use crate::contract::{ calc_pending };
 
 
