@@ -15,8 +15,9 @@ pub enum ExecuteMsg {
         admin: String,
     },
     AddProject {
-        admin:String, 
-        token_addr:String, 
+        project_id: Uint128,
+        admin: String, 
+        token_addr: String, 
         start_time: Uint128 
     },
     SetProjectInfo{
@@ -72,6 +73,7 @@ pub enum QueryMsg {
     GetPendingTokens { project_id: Uint128, wallet: String },
     GetBalance { project_id: Uint128, wallet: String },
     GetProjectInfo { project_id: Uint128 },
-    GetAllProjectInfo {}
+    GetAllProjectInfo {},
+    GetOwner{ }
 }
 

@@ -12,7 +12,7 @@ use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse,
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{ProjectInfo, UserInfo, VestingParameter, PROJECT_SEQ, PROJECT_INFOS, OWNER, Config,
-    save_projectinfo };
+    };
 
 // version info for migration info
 const CONTRACT_NAME: &str = "Vesting";
@@ -50,8 +50,8 @@ pub fn execute(
         ExecuteMsg::SetConfig{ admin }
             => try_setconfig(deps, info, admin),
 
-        ExecuteMsg::AddProject{ admin, token_addr, start_time }
-            => try_addproject(deps, info, admin, token_addr, start_time ),
+        ExecuteMsg::AddProject{ project_id, admin, token_addr, start_time }
+            => try_addproject(deps, info, project_id, admin, token_addr, start_time ),
 
         ExecuteMsg::SetProjectInfo{ project_id, project_info }
             => try_setprojectinfo(deps, info, project_id, project_info ),
@@ -328,8 +328,9 @@ pub fn try_setprojectconfig(deps:DepsMut, info:MessageInfo,
 }
 
 pub fn try_addproject(deps:DepsMut, info:MessageInfo,
-    admin:String, 
-    token_addr:String,
+    project_id: Uint128,
+    admin: String, 
+    token_addr: String,
     start_time: Uint128
 ) -> Result<Response, ContractError>
 {
@@ -345,7 +346,7 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
         start_time : start_time,
     };
 
-    let mut project_info: ProjectInfo = ProjectInfo{
+    let project_info: ProjectInfo = ProjectInfo{
         project_id: Uint128::zero(),
         config: config,
         vest_param: HashMap::new(),
@@ -354,8 +355,7 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
         ido_users: Vec::new()
     };
 
-    let mut deps = deps;
-    save_projectinfo(deps.branch(), &mut project_info)?;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &project_info)?;
 
     let sec_per_month = 60 * 60 * 24 * 30;
     let seed_param = VestingParameter {
@@ -374,7 +374,7 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
         period: Uint128::new(sec_per_month * 4) //release over 4 month
     };
 
-    try_setvestingparameters(deps.branch(), info, project_info.project_id, vec![seed_param, presale_param, ido_param])?;
+    try_setvestingparameters(deps, info, project_info.project_id, vec![seed_param, presale_param, ido_param])?;
 
     Ok(Response::new()
         .add_attribute("action", "SetConfig"))                                

@@ -49,15 +49,3 @@ pub const OWNER: Item<Addr> = Item::new("owner");
 
 pub const PROJECT_SEQ: Item<Uint128> = Item::new("prj_seq");
 pub const PROJECT_INFOS:Map<U128Key, ProjectInfo> = Map::new("project_infos");
-
-pub fn save_projectinfo(deps: DepsMut, _prj: &mut ProjectInfo) 
-    -> StdResult<()> 
-{
-    // increment id if exists, or return 1
-    let id = PROJECT_SEQ.load(deps.storage)?;
-    let id = id.checked_add(Uint128::new(1))?;
-    PROJECT_SEQ.save(deps.storage, &id)?;
-
-    _prj.project_id = id;
-    PROJECT_INFOS.save(deps.storage, id.u128().into(), &_prj)
-}

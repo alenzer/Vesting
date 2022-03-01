@@ -9,7 +9,7 @@ use cosmwasm_std::{
 use cw20::{ Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse, TokenInfoResponse };
 
 use crate::msg::{QueryMsg};
-use crate::state::{Config, PROJECT_INFOS, ProjectInfo};
+use crate::state::{Config, PROJECT_INFOS, ProjectInfo, OWNER};
 use crate::contract::{ calc_pending };
 
 
@@ -31,6 +31,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetAllProjectInfo{ } =>
             to_binary(&query_getallprojectinfo(deps)?),
 
+        QueryMsg::GetOwner{ } => {
+            let owner = OWNER.load(deps.storage).unwrap();
+            to_binary(&owner)
+        }
     }
 }
 fn query_pendingtokens(deps:Deps, _env:Env, project_id: Uint128, wallet: String) 
