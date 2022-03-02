@@ -8,7 +8,7 @@ use cosmwasm_std::{
 
 use cw20::{ Cw20QueryMsg, BalanceResponse as Cw20BalanceResponse, TokenInfoResponse };
 
-use crate::msg::{QueryMsg, Config, ProjectInfo};
+use crate::msg::{QueryMsg, Config, ProjectInfo, UserInfo};
 use crate::state::{PROJECT_INFOS, OWNER};
 use crate::contract::{ calc_pending };
 
@@ -35,6 +35,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let owner = OWNER.load(deps.storage).unwrap();
             to_binary(&owner)
         }
+
+        QueryMsg::GetUserInfo{ project_id, wallet } =>
+            to_binary(&query_getuserinfo(deps, project_id, wallet)?),
     }
 }
 fn query_pendingtokens(deps:Deps, _env:Env, project_id: Uint128, wallet: String) 
@@ -113,4 +116,36 @@ fn query_getallprojectinfo(deps: Deps) -> StdResult<Vec<ProjectInfo>>
         all_project.push(x.1);
     }
     Ok(all_project)
+}
+
+fn query_getuserinfo(deps:Deps, project_id: Uint128, wallet: String) 
+    -> StdResult<UserInfo> 
+{
+    let x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
+    let mut user_info: UserInfo = UserInfo{
+        total_amount: Uint128::zero(),
+        released_amount: Uint128::zero(),
+        wallet_address: deps.api.addr_validate(&wallet).unwrap(),
+        pending_amount: Uint128::zero()
+    };
+
+    let mut index = x.seed_users.iter().position(|x| x.wallet_address == wallet);
+    if index != None {
+        user_info.total_amount += x.seed_users[index.unwrap()].total_amount;
+        user_info.released_amount += x.seed_users[index.unwrap()].released_amount;
+    }
+
+    index = x.presale_users.iter().position(|x| x.wallet_address == wallet);
+    if index != None {
+        user_info.total_amount += x.presale_users[index.unwrap()].total_amount;
+        user_info.released_amount += x.presale_users[index.unwrap()].released_amount;
+    }
+
+    index = x.ido_users.iter().position(|x| x.wallet_address == wallet);
+    if index != None {
+        user_info.total_amount += x.ido_users[index.unwrap()].total_amount;
+        user_info.released_amount += x.ido_users[index.unwrap()].released_amount;
+    }
+
+    Ok(user_info)
 }

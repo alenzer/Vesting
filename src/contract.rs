@@ -46,8 +46,14 @@ pub fn execute(
         ExecuteMsg::SetConfig{ admin }
             => try_setconfig(deps, info, admin),
 
-        ExecuteMsg::AddProject{ project_id, admin, token_addr, start_time }
-            => try_addproject(deps, info, project_id, admin, token_addr, start_time ),
+        ExecuteMsg::AddUser{ project_id, wallet, stage, amount} 
+            => try_adduser(deps, info, project_id, wallet, stage, amount),
+
+        ExecuteMsg::StartRelease{ project_id, start_time }
+            => try_startrelease(deps, info, project_id, start_time),
+
+        ExecuteMsg::AddProject{ project_id, admin, token_addr, vesting_params, start_time }
+            => try_addproject(deps, info, project_id, admin, token_addr, vesting_params, start_time ),
 
         ExecuteMsg::SetProjectInfo{ project_id, project_info }
             => try_setprojectinfo(deps, info, project_id, project_info ),
@@ -80,13 +86,52 @@ pub fn execute(
             =>  try_claimpendingtokens(deps, _env, info, project_id )
     }
 }
+pub fn try_adduser(deps: DepsMut, info: MessageInfo, project_id: Uint128, wallet: Addr, stage: String, amount: Uint128)
+    ->Result<Response, ContractError>
+{
+    let owner = OWNER.load(deps.storage).unwrap();
+    let x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
+    if info.sender != owner && info.sender != x.config.owner {
+        return Err(ContractError::Unauthorized{ });
+    }
+    
+    if stage.to_lowercase() == "seed".to_string(){
+        try_addseeduser(deps, info, project_id, wallet, amount)?;
+    }
+    else if stage.to_lowercase() == "presale".to_string(){
+        try_addpresaleuser(deps, info, project_id, wallet, amount)?;
+    }
+    else if stage.to_lowercase() == "ido".to_string(){
+        try_addidouser(deps, info, project_id, wallet, amount)?;
+    }
+
+    Ok(Response::new()
+    .add_attribute("action", "Set User info"))
+}
+pub fn try_startrelease(deps: DepsMut, info:MessageInfo, project_id: Uint128, start_time: Uint128)
+    ->Result<Response, ContractError>
+{
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
+        return Err(ContractError::Unauthorized{ });
+    }
+
+    x.config.start_time = start_time;
+    PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
+    Ok(Response::new()
+    .add_attribute("action", "Start Release"))  
+}
+
 pub fn try_setprojectinfo(deps: DepsMut, info: MessageInfo, project_id: Uint128, project_info: ProjectInfo)
     ->Result<Response, ContractError>
 {
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    if x.config.owner != info.sender {
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
         return Err(ContractError::Unauthorized{ });
     }
+
     x = project_info;
     PROJECT_INFOS.save(deps.storage, project_id.u128().into(), &x)?;
     Ok(Response::new()
@@ -96,7 +141,8 @@ pub fn try_setvestingparameters(deps: DepsMut, info: MessageInfo, project_id: Ui
     ->Result<Response, ContractError>
 {
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    if x.config.owner != info.sender {
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
         return Err(ContractError::Unauthorized{ });
     }
 
@@ -111,6 +157,10 @@ pub fn calc_pending(store: &dyn Storage, _env: Env, project_id: Uint128, user: U
     -> Uint128
 {
     let x = PROJECT_INFOS.load(store, project_id.u128().into()).unwrap();
+    if x.config.start_time == Uint128::zero() {
+        return Uint128::zero();
+    }
+
     let index;
     if stage.to_lowercase() == "seed".to_string(){
         index = 0;
@@ -124,7 +174,7 @@ pub fn calc_pending(store: &dyn Storage, _env: Env, project_id: Uint128, user: U
 
     let param = x.vest_param[index];
 
-    let past_time =Uint128::new(_env.block.time.seconds() as u128) - x.config.start_time;
+    let past_time = Uint128::new(_env.block.time.seconds() as u128) - x.config.start_time;
 
     let mut unlocked = Uint128::zero();
     if past_time > Uint128::zero() {
@@ -225,7 +275,8 @@ pub fn try_addseeduser(deps: DepsMut, info: MessageInfo, project_id: Uint128, wa
     ->Result<Response, ContractError>
 {
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    if x.config.owner != info.sender {
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
         return Err(ContractError::Unauthorized{ });
     }
 
@@ -239,7 +290,8 @@ pub fn try_addpresaleuser(deps: DepsMut, info: MessageInfo, project_id: Uint128,
     ->Result<Response, ContractError>
 {
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    if x.config.owner != info.sender {
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
         return Err(ContractError::Unauthorized{ });
     }
 
@@ -253,7 +305,8 @@ pub fn try_addidouser(deps: DepsMut, info: MessageInfo, project_id: Uint128, wal
     ->Result<Response, ContractError>
 {
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    if x.config.owner != info.sender {
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
         return Err(ContractError::Unauthorized{ });
     }
 
@@ -267,7 +320,8 @@ pub fn try_setseedusers(deps: DepsMut, info: MessageInfo, project_id: Uint128, u
     ->Result<Response, ContractError>
 {
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    if x.config.owner != info.sender {
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
         return Err(ContractError::Unauthorized{ });
     }
 
@@ -282,7 +336,8 @@ pub fn try_setpresaleusers(deps: DepsMut, info: MessageInfo, project_id: Uint128
     ->Result<Response, ContractError>
 {
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    if x.config.owner != info.sender {
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
         return Err(ContractError::Unauthorized{ });
     }
 
@@ -297,7 +352,8 @@ pub fn try_setidousers(deps: DepsMut, info: MessageInfo, project_id: Uint128, us
     ->Result<Response, ContractError>
 {
     let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    if x.config.owner != info.sender {
+    let owner = OWNER.load(deps.storage).unwrap();
+    if info.sender != owner && info.sender != x.config.owner {
         return Err(ContractError::Unauthorized{ });
     }
 
@@ -317,12 +373,12 @@ pub fn try_setprojectconfig(deps:DepsMut, info:MessageInfo,
 ) -> Result<Response, ContractError>
 {
     //-----------check owner--------------------------
+    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     let owner = OWNER.load(deps.storage).unwrap();
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized{});
+    if info.sender != owner && info.sender != x.config.owner {
+        return Err(ContractError::Unauthorized{ });
     }
 
-    let mut x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
     x.config.owner = deps.api.addr_validate(admin.as_str())?;
     x.config.token_addr = token_addr;
     x.config.start_time = start_time;
@@ -336,6 +392,7 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
     project_id: Uint128,
     admin: String, 
     token_addr: String,
+    vesting_params: Vec<VestingParameter>,
     start_time: Uint128
 ) -> Result<Response, ContractError>
 {
@@ -351,27 +408,31 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
         start_time : start_time,
     };
 
-    let sec_per_month = 60 * 60 * 24 * 30;
-    let seed_param = VestingParameter {
-        soon: Uint128::new(15), //15% unlock at tge
-        after: Uint128::new(sec_per_month), //after 1 month
-        period: Uint128::new(sec_per_month * 6) //release over 6 month
-    };
-    let presale_param = VestingParameter {
-        soon: Uint128::new(20), //20% unlock at tge
-        after: Uint128::new(sec_per_month), //ater 1 month
-        period: Uint128::new(sec_per_month * 5) //release over 5 month
-    };
-    let ido_param = VestingParameter {
-        soon: Uint128::new(25), //25% unlock at tge
-        after: Uint128::new(sec_per_month), //after 1 month
-        period: Uint128::new(sec_per_month * 4) //release over 4 month
-    };
+    let mut _vesting_params = vesting_params;
+    if _vesting_params.len() == 0{
+        let sec_per_month = 60 * 60 * 24 * 30;
+        let seed_param = VestingParameter {
+            soon: Uint128::new(15), //15% unlock at tge
+            after: Uint128::new(sec_per_month), //after 1 month
+            period: Uint128::new(sec_per_month * 6) //release over 6 month
+        };
+        let presale_param = VestingParameter {
+            soon: Uint128::new(20), //20% unlock at tge
+            after: Uint128::new(sec_per_month), //ater 1 month
+            period: Uint128::new(sec_per_month * 5) //release over 5 month
+        };
+        let ido_param = VestingParameter {
+            soon: Uint128::new(25), //25% unlock at tge
+            after: Uint128::new(sec_per_month), //after 1 month
+            period: Uint128::new(sec_per_month * 4) //release over 4 month
+        };
+        _vesting_params = vec![seed_param, presale_param, ido_param];
+    }
 
     let project_info: ProjectInfo = ProjectInfo{
         project_id: project_id,
         config: config,
-        vest_param: vec![seed_param, presale_param, ido_param],
+        vest_param: _vesting_params,
         seed_users: Vec::new(),
         presale_users: Vec::new(),
         ido_users: Vec::new()
@@ -385,7 +446,7 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
 pub fn try_setconfig(deps:DepsMut, info:MessageInfo, admin: String) 
     -> Result<Response, ContractError>
 {
-    //-----------check owner--------------------------
+    // //-----------check owner--------------------------
     // let owner = OWNER.load(deps.storage).unwrap();
     // if info.sender != owner {
     //     return Err(ContractError::Unauthorized{});

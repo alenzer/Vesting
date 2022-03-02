@@ -16,8 +16,19 @@ pub enum ExecuteMsg {
     AddProject {
         project_id: Uint128,
         admin: String, 
-        token_addr: String, 
+        token_addr: String,
+        vesting_params: Vec<VestingParameter>,
         start_time: Uint128 
+    },
+    StartRelease{
+        project_id: Uint128,
+        start_time: Uint128
+    },
+    AddUser {
+        project_id: Uint128,
+        wallet: Addr,
+        stage: String,
+        amount: Uint128,
     },
     SetProjectInfo{
         project_id: Uint128,
@@ -70,6 +81,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     GetConfig { project_id: Uint128 },
     GetPendingTokens { project_id: Uint128, wallet: String },
+    GetUserInfo { project_id: Uint128, wallet: String },
     GetBalance { project_id: Uint128, wallet: String },
     GetProjectInfo { project_id: Uint128 },
     GetAllProjectInfo {},
