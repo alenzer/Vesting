@@ -369,7 +369,7 @@ pub fn try_addproject(deps:DepsMut, info:MessageInfo,
     };
 
     let project_info: ProjectInfo = ProjectInfo{
-        project_id: Uint128::zero(),
+        project_id: project_id,
         config: config,
         vest_param: vec![seed_param, presale_param, ido_param],
         seed_users: Vec::new(),
@@ -386,10 +386,10 @@ pub fn try_setconfig(deps:DepsMut, info:MessageInfo, admin: String)
     -> Result<Response, ContractError>
 {
     //-----------check owner--------------------------
-    let owner = OWNER.load(deps.storage).unwrap();
-    if info.sender != owner {
-        return Err(ContractError::Unauthorized{});
-    }
+    // let owner = OWNER.load(deps.storage).unwrap();
+    // if info.sender != owner {
+    //     return Err(ContractError::Unauthorized{});
+    // }
 
     let admin_addr = deps.api.addr_validate(&admin).unwrap();
     OWNER.save(deps.storage, &admin_addr)?;
