@@ -1,6 +1,7 @@
 use cosmwasm_std::{Uint128, Addr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use cw_storage_plus::{Map, U128Key};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -24,12 +25,6 @@ pub enum ExecuteMsg {
         project_id: Uint128,
         start_time: Uint128
     },
-    AddUser {
-        project_id: Uint128,
-        wallet: Addr,
-        stage: String,
-        amount: Uint128,
-    },
     SetProjectInfo{
         project_id: Uint128,
         project_info: ProjectInfo
@@ -44,32 +39,16 @@ pub enum ExecuteMsg {
         project_id: Uint128,
         params: Vec<VestingParameter>
     },
-    SetSeedUsers {
+    AddUser {
         project_id: Uint128,
-        user_infos: Vec<UserInfo>
-    },
-    AddSeedUser {
-        project_id: Uint128,
+        stage: Uint128,
         wallet: Addr,
-        amount: Uint128
+        amount: Uint128,
     },
-    SetPresaleUsers {
+    SetUsers {
         project_id: Uint128,
+        stage: Uint128,
         user_infos: Vec<UserInfo>
-    },
-    AddPresaleUser {
-        project_id: Uint128,
-        wallet: Addr,
-        amount: Uint128
-    },
-    SetIDOUsers {
-        project_id: Uint128,
-        user_infos: Vec<UserInfo>
-    },
-    AddIDOUser {
-        project_id: Uint128,
-        wallet: Addr,
-        amount: Uint128
     },
     ClaimPendingTokens{
         project_id: Uint128
@@ -118,7 +97,5 @@ pub struct ProjectInfo{
 	pub project_id: Uint128,
 	pub config: Config,
 	pub vest_param: Vec<VestingParameter>,
-	pub seed_users: Vec<UserInfo>,
-	pub presale_users: Vec<UserInfo>,
-	pub ido_users: Vec<UserInfo>,
+	pub users: Vec<Vec<UserInfo>>,
 }

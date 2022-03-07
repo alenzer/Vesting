@@ -12,7 +12,6 @@ use crate::msg::{QueryMsg, Config, ProjectInfo, UserInfo};
 use crate::state::{PROJECT_INFOS, OWNER};
 use crate::contract::{ calc_pending };
 
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -44,29 +43,16 @@ fn query_pendingtokens(deps:Deps, _env:Env, project_id: Uint128, wallet: String)
     -> StdResult<Uint128> 
 {
     let x = PROJECT_INFOS.load(deps.storage, project_id.u128().into())?;
-    let mut index = x.seed_users.iter().position(|x| x.wallet_address == wallet);
+
     let mut amount = Uint128::zero();
-    if index != None {
-        let pending_amount = calc_pending(
-            deps.storage, _env.clone(), project_id, x.seed_users[index.unwrap()].clone(), "seed".to_string()
-        );
-        amount += pending_amount;
-    }
-
-    index = x.presale_users.iter().position(|x| x.wallet_address == wallet);
-    if index != None {
-        let pending_amount = calc_pending(
-            deps.storage, _env.clone(), project_id, x.presale_users[index.unwrap()].clone(), "presale".to_string()
-        );
-        amount += pending_amount;
-    }
-
-    index = x.ido_users.iter().position(|x| x.wallet_address == wallet);
-    if index != None {
-        let pending_amount = calc_pending(
-            deps.storage, _env.clone(), project_id, x.ido_users[index.unwrap()].clone(), "ido".to_string()
-        );
-        amount += pending_amount;
+    for i in 0..x.users.len()-1{
+        let index = x.users[i].iter().position(|x| x.wallet_address == wallet);
+        if index != None {
+            let pending_amount = calc_pending(
+                deps.storage, _env.clone(), project_id, x.users[i][index.unwrap()].clone(), i
+            );
+            amount += pending_amount;
+        }
     }
 
     Ok(amount)
@@ -129,22 +115,12 @@ fn query_getuserinfo(deps:Deps, project_id: Uint128, wallet: String)
         pending_amount: Uint128::zero()
     };
 
-    let mut index = x.seed_users.iter().position(|x| x.wallet_address == wallet);
-    if index != None {
-        user_info.total_amount += x.seed_users[index.unwrap()].total_amount;
-        user_info.released_amount += x.seed_users[index.unwrap()].released_amount;
-    }
-
-    index = x.presale_users.iter().position(|x| x.wallet_address == wallet);
-    if index != None {
-        user_info.total_amount += x.presale_users[index.unwrap()].total_amount;
-        user_info.released_amount += x.presale_users[index.unwrap()].released_amount;
-    }
-
-    index = x.ido_users.iter().position(|x| x.wallet_address == wallet);
-    if index != None {
-        user_info.total_amount += x.ido_users[index.unwrap()].total_amount;
-        user_info.released_amount += x.ido_users[index.unwrap()].released_amount;
+    for i in 0..x.users.len()-1{
+        let index = x.users[i].iter().position(|x| x.wallet_address == wallet);
+        if index != None {
+            user_info.total_amount += x.users[i][index.unwrap()].total_amount;
+            user_info.released_amount += x.users[i][index.unwrap()].released_amount;
+        }
     }
 
     Ok(user_info)
